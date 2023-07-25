@@ -1,21 +1,41 @@
-#version: '3'
-#
-#services:
-#  ml_processor_app:
-#    build:
-#      context: ./ml_processor
-#    depends_on:
-#      - redis
-#
-#  redis:
-#    image: "redis:latest"
-#    ports:
-#      - "6379:6379"
-#
-#  celery_worker:
-#    build:
-#      context: .
-#    depends_on:
-#      - redis
-#      - ml_processor_app
-#    command: celery -A ml_processor worker --loglevel=info
+version: "3.7"
+services:
+  web:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+     - "5001:5001"
+    depends_on:
+      - redis
+    volumes: ['./api:/api']
+  worker:
+    build:
+      context: celery_queue
+      dockerfile: Dockerfile
+    command: celery -A tasks worker -l info -E
+    environment:
+      CELERY_BROKER_URL: redis://redis
+      CELERY_RESULT_BACKEND: redis://redis
+    depends_on:
+      - redis
+    volumes: ['./celery_queue:/queue']
+  monitor:
+    build:
+      context: celery_queue
+      dockerfile: Dockerfile
+    ports:
+     - "5555:5555"
+    command:  ['celery', 'flower', '-A', 'tasks']
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      - redis
+      - worker
+    volumes: ['./celery_queue:/queue']
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
