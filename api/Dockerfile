@@ -8,7 +8,7 @@ ENV HOST 0.0.0.0
 ENV PORT 5001
 ENV DEBUG true
 
-COPY .. /api
+COPY . /api
 WORKDIR /api
 
 RUN pip install -U setuptools pip
